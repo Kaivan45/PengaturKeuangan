@@ -106,10 +106,16 @@ function budgetMode() {
   const has = { p10: B.total > 0, month: B.total > 0 || !!(B.month && B.month.total > 0) };
   return has[pref] || !(has.p10 || has.month) ? pref : (pref === 'p10' ? 'month' : 'p10');
 }
+/* Anggaran rentang khusus yang mencakup hari ini (bila ada, yang paling baru dimulai didahulukan). */
+function customNow() {
+  const c = D().budget.custom || {}, t = today();
+  const hit = Object.keys(c).map(k => k.split('_')).filter(([s, e]) => s <= t && t <= e).sort((x, y) => y[0].localeCompare(x[0]))[0];
+  return hit ? { start: hit[0], end: hit[1], set: c[hit.join('_')] } : null;
+}
 function budgetNow() {
-  const mode = budgetMode(), [yy, mm] = today().split('-').map(Number);
-  const bp = mode === 'month' ? { start: `${yy}-${pad(mm)}-01`, end: `${yy}-${pad(mm)}-${pad(lastDay(yy, mm))}` } : periodOf(today());
-  const b0 = budgetFor(mode, bp), spent = sumT(inR(bp), 'expense'), total = b0.total, cb = b0.categories;
+  const cn = customNow(), mode = cn ? 'custom' : budgetMode(), [yy, mm] = today().split('-').map(Number);
+  const bp = cn ? { start: cn.start, end: cn.end } : mode === 'month' ? { start: `${yy}-${pad(mm)}-01`, end: `${yy}-${pad(mm)}-${pad(lastDay(yy, mm))}` } : periodOf(today());
+  const b0 = cn ? cn.set : budgetFor(mode, bp), spent = sumT(inR(bp), 'expense'), total = b0.total, cb = b0.categories;
   if (!total) return '<div class="panel mb-3"><h2 class="h6 mb-1">Anggaran berlaku</h2><p class="small text-muted mb-2">Anggaran belum diatur. Tentukan anggaran agar sisa uang dan peringatan bisa dipantau.</p><a href="#anggaran" class="btn btn-success btn-sm">Atur anggaran</a></div>';
   const pct = total ? spent / total * 100 : 0, [cls] = status(pct), left = daysBetween(today(), bp.end) + 1, cs = byCat(inR(bp));
   const msg = pct >= 100 ? `<div class="alert alert-danger py-2 small mb-2"><i class="bi bi-exclamation-octagon"></i> Anggaran periode ini sudah terpakai ${Math.round(pct)}%. Tahan pengeluaran non-esensial.</div>`
@@ -117,7 +123,7 @@ function budgetNow() {
   const rows = expCats().filter(c => cb[c] || cs[c]).map(c => { const bb = cb[c] || 0, s = cs[c] || 0, pc = bb ? s / bb * 100 : 100;
     return `<div class="col-md-6"><div class="d-flex justify-content-between small"><span>${esc(c)}</span><span class="text-muted">${rp(s)}${bb ? ' / ' + rp(bb) : ' · tanpa anggaran'}</span></div>${bb ? bar(pc, status(pc)[0]) : ''}</div>`; }).join('');
   return `<div class="panel mb-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><div><h2 class="h6 mb-0">Anggaran berlaku ${badge(pct)}</h2><div class="small text-muted">${plabel(bp)} · ${left} hari lagi</div></div><a href="#anggaran" class="small">Atur anggaran</a></div>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><div><h2 class="h6 mb-0">Anggaran berlaku ${badge(pct)}${cn ? ' <span class="badge text-bg-secondary">Rentang khusus</span>' : ''}</h2><div class="small text-muted">${plabel(bp)} · ${left} hari lagi</div></div><a href="#anggaran" class="small">Atur anggaran</a></div>
     ${msg}
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-1"><div><span class="fs-4 fw-bold">${rp(total - spent)}</span> <span class="text-muted small">sisa dari ${rp(total)}</span></div><div class="small text-muted">Terpakai ${rp(spent)} · ${Math.round(pct)}%</div></div>
     ${bar(pct, cls)}
@@ -219,6 +225,8 @@ function viewBudget() {
   const cs = byCat(tx), [bc] = status(pct), cats = expCats(), catSum = cats.reduce((a, c) => a + (cb[c] || 0), 0);
   const name = mode === 'month' ? 'bulanan' : mode === 'custom' ? 'rentang khusus' : 'per 10 hari';
   const k = mode === 'month' ? '× 3' : `× ${(Math.round((daysBetween(r.start, r.end) + 1) / 10 * 100) / 100).toLocaleString('id-ID')}`;
+  const customs = Object.entries(D().budget.custom || {}).sort((x, y) => y[0].localeCompare(x[0]));
+  const customList = customs.length ? `<div class="panel mb-3"><h2 class="h6">Rentang khusus tersimpan</h2><div class="d-flex flex-wrap gap-2">${customs.map(([k, v]) => { const [s, e] = k.split('_'); return `<button class="btn btn-sm btn-outline-secondary" data-act="open-custom" data-from="${s}" data-to="${e}">${plabel({ start: s, end: e })} · ${rp(v.total)}</button>`; }).join('')}</div><div class="form-text">Anggaran rentang khusus hanya berlaku untuk tanggal yang persis sama dan tampil di Dashboard selama rentangnya mencakup hari ini.</div></div>` : '';
   const alert = !total ? '<div class="alert alert-info">Anggaran belum diatur. Isi total anggaran dan anggaran tiap kategori di bawah, lalu klik “Simpan anggaran”.</div>' : pct >= 100 ? `<div class="alert alert-danger"><i class="bi bi-exclamation-octagon"></i> Anggaran ${name} sudah terpakai ${Math.round(pct)}%. Tahan dulu pengeluaran non-esensial.</div>`
     : pct >= 80 ? `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Anggaran sudah terpakai ${Math.round(pct)}% (≥ 80%). Sisa ${rp(total - spent)}.</div>` : '';
   const tpl = budgetTemplate(total, cb);
@@ -232,6 +240,7 @@ function viewBudget() {
   $('#view-anggaran').innerHTML = `
   <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3"><div><h1 class="h3 m-0">Anggaran ${name}</h1><div class="small text-muted">${esc(r.label)}${r.start <= today() && today() <= r.end ? ' · sedang berjalan' : ''}</div></div>${filterHTML('bud')}</div>
   ${alert}
+  ${customList}
   <div class="row g-3 mb-3">${stat('Total anggaran', rp(total), 'bi-cash-stack')}${stat('Total pengeluaran', rp(spent), 'bi-bag')}${stat('Sisa uang', rp(total - spent), 'bi-wallet')}
     <div class="col-12 col-lg-4 col-xl"><div class="panel stat h-100"><div class="l">Anggaran terpakai</div><div class="v">${(Math.round(pct*10)/10).toLocaleString('id-ID')}%</div>${bar(pct, bc)}</div></div></div>
   ${tpl}
@@ -358,6 +367,7 @@ document.addEventListener('click', e => {
     case 'del-tx': { const t = D().transactions.find(x => x.id === id); if (t && confirm(`Hapus transaksi “${t.name}” (${rp(t.amount)})?`)) { Store.deleteTx(id); toast('Transaksi dihapus.'); } break; }
     case 'reset-filter': ['fSearch','fType','fCat','fMethod','fFrom','fTo'].forEach(i => $('#' + i).value = ''); viewTx(); break;
     case 'shift-p': { const f = F[b.closest('[data-f]').dataset.f]; f.start = addDays(DATE_RE.test(f.start) ? f.start : periodOf(today()).start, 10 * Number(b.dataset.dir)); render(); break; }
+    case 'open-custom': Object.assign(F.bud, { mode: 'custom', from: b.dataset.from, to: b.dataset.to }); render(); break;
     case 'cur-p': F[b.closest('[data-f]').dataset.f].start = periodOf(today()).start; render(); break;
     case 'hide-warn': Store.setPref('hideWarn', true); break;
     case 'save-budget': {
@@ -465,6 +475,7 @@ F = { dash: mkF(), rep: mkF(), bud: mkF() };
 ['dash', 'rep', 'bud'].forEach(k => F[k].mode = D().prefs.defMode === 'month' ? 'month' : 'p10');
 Store.onChange(render);
 F.bud.mode = budgetMode(); // halaman Anggaran langsung membuka mode yang sudah punya anggaran
+{ const cn = customNow(); if (cn) Object.assign(F.bud, { mode: 'custom', from: cn.start, to: cn.end }); }
 Store.onExternal(() => { toast('Data diperbarui dari tab lain.', 'info'); render(); });
 document.addEventListener('change', e => {
   if (e.target.id !== 'defMode') return;
