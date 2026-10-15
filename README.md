@@ -56,7 +56,7 @@ MoneyMate adalah aplikasi web sederhana untuk mencatat dan mengatur keuangan har
     └── app.js        # Logika aplikasi, tampilan, dan grafik
 ```
 
-## 💾 Penyimpanan Data
+## Penyimpanan Data
 
 Semua data disimpan di `localStorage` browser dengan kunci `moneymate_data_v1`. Artinya:
 
