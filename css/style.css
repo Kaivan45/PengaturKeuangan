@@ -1,0 +1,30 @@
+:root{--g:#15803d;--g-dark:#0f5132;--g-soft:#e8f6ee;--ink:#17261d;--muted:#6b7a70;--line:#e4ebe6}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:#fff}
+.text-muted{color:var(--muted)!important}
+.sidebar{position:fixed;inset:0 auto 0 0;width:240px;border-right:1px solid var(--line);padding:1.25rem 1rem;display:none;flex-direction:column;background:#fff;z-index:100}
+.brand{font-weight:700;font-size:1.3rem;color:var(--g);margin-bottom:1.5rem;display:flex;gap:.5rem;align-items:center}
+.nav-mm{display:flex;gap:.7rem;align-items:center;padding:.6rem .8rem;border-radius:.6rem;color:var(--ink);text-decoration:none;font-weight:500}
+.nav-mm:hover{background:#f4f8f5}
+.nav-mm.active{background:var(--g-soft);color:var(--g);font-weight:700}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-nav a{flex:1;text-align:center;font-size:.62rem;padding:.5rem 0;color:var(--muted);text-decoration:none}
+.bottom-nav a i{display:block;font-size:1.25rem}
+.bottom-nav a.active{color:var(--g);font-weight:700}
+.main{padding:1.25rem 1rem 6rem}
+.view{display:none;max-width:1180px}
+.view.active{display:block}
+@media(min-width:992px){.sidebar{display:flex}.main{margin-left:240px;padding:2rem}.bottom-nav{display:none}}
+.panel{border:1px solid var(--line);border-radius:.9rem;padding:1.1rem;background:#fff}
+.stat .l{font-size:.8rem;color:var(--muted)}
+.stat .v{font-size:1.35rem;font-weight:700;line-height:1.3}
+.stat .i{width:2.2rem;height:2.2rem;border-radius:.6rem;background:var(--g-soft);color:var(--g);display:grid;place-items:center}
+.stat.hero{background:var(--g);border-color:var(--g);color:#fff}
+.stat.hero .l{color:#d6f0e0}.stat.hero .i{background:rgba(255,255,255,.18);color:#fff}
+.chart-box{position:relative;height:260px}
+.empty{height:100%;display:grid;place-items:center;color:var(--muted);text-align:center;font-size:.9rem;padding:1rem}
+.filter-bar label{font-size:.75rem;color:var(--muted)}
+.table>:not(caption)>*>*{padding:.65rem .5rem}
+.progress{background:#e9efe9}
+.btn-success{--bs-btn-bg:var(--g);--bs-btn-border-color:var(--g);--bs-btn-hover-bg:var(--g-dark);--bs-btn-hover-border-color:var(--g-dark)}
+.form-control:focus,.form-select:focus{border-color:var(--g);box-shadow:0 0 0 .2rem rgba(21,128,61,.15)}
+details summary{cursor:pointer;color:var(--g);font-size:.85rem}
