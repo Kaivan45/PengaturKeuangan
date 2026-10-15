@@ -100,8 +100,14 @@ const moneyOpts = { scales: { y: { beginAtZero:true, ticks: { callback: fmtTick 
 
 /* ===== View: Dashboard ===== */
 /* Panel utama dashboard: anggaran 10 hari yang sedang berlaku (selalu periode berjalan, tidak terpengaruh filter). */
+/* Mode anggaran yang dipakai: ikuti preferensi, tetapi bila mode itu belum punya anggaran sedangkan mode lain sudah, pakai mode yang sudah terisi. */
+function budgetMode() {
+  const B = D().budget, pref = D().prefs.defMode === 'month' ? 'month' : 'p10';
+  const has = { p10: B.total > 0, month: B.total > 0 || !!(B.month && B.month.total > 0) };
+  return has[pref] || !(has.p10 || has.month) ? pref : (pref === 'p10' ? 'month' : 'p10');
+}
 function budgetNow() {
-  const mode = D().prefs.defMode === 'month' ? 'month' : 'p10', [yy, mm] = today().split('-').map(Number);
+  const mode = budgetMode(), [yy, mm] = today().split('-').map(Number);
   const bp = mode === 'month' ? { start: `${yy}-${pad(mm)}-01`, end: `${yy}-${pad(mm)}-${pad(lastDay(yy, mm))}` } : periodOf(today());
   const b0 = budgetFor(mode, bp), spent = sumT(inR(bp), 'expense'), total = b0.total, cb = b0.categories;
   if (!total) return '<div class="panel mb-3"><h2 class="h6 mb-1">Anggaran berlaku</h2><p class="small text-muted mb-2">Anggaran belum diatur. Tentukan anggaran agar sisa uang dan peringatan bisa dipantau.</p><a href="#anggaran" class="btn btn-success btn-sm">Atur anggaran</a></div>';
@@ -366,7 +372,7 @@ document.addEventListener('click', e => {
         const anchor = $('#bAnchor').value; if (!DATE_RE.test(anchor)) return toast('Tanggal mulai siklus wajib diisi.', 'danger');
         Store.setBudget({ ...B, total, anchor, categories: cats }); ['dash','rep','bud'].forEach(k => F[k].start = periodOf(today()).start);
       }
-      Store.storageOk ? toast('Anggaran disimpan.') : toast('Gagal menyimpan: penyimpanan browser diblokir.', 'danger'); break;
+      Store.storageOk ? toast(`Anggaran ${mode === 'month' ? 'bulanan' : mode === 'custom' ? 'rentang khusus' : 'per 10 hari'} disimpan.`) : toast('Gagal menyimpan: penyimpanan browser diblokir.', 'danger'); break;
     }
     case 'apply-tpl': {
       const total = parseRp($('#bTotal').value);
@@ -458,6 +464,8 @@ Store.init();
 F = { dash: mkF(), rep: mkF(), bud: mkF() };
 ['dash', 'rep', 'bud'].forEach(k => F[k].mode = D().prefs.defMode === 'month' ? 'month' : 'p10');
 Store.onChange(render);
+F.bud.mode = budgetMode(); // halaman Anggaran langsung membuka mode yang sudah punya anggaran
+Store.onExternal(() => { toast('Data diperbarui dari tab lain.', 'info'); render(); });
 document.addEventListener('change', e => {
   if (e.target.id !== 'defMode') return;
   const v = e.target.value === 'month' ? 'month' : 'p10';

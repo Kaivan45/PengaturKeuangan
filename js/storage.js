@@ -75,9 +75,19 @@ const Store = (() => {
   }
   const commit = () => { save(); listeners.forEach(fn => fn()); };
 
+  /* Sinkron antar-tab: bila tab lain menyimpan, muat ulang data agar tab ini tidak menimpanya dengan salinan lama. */
+  const external = [];
+  function reloadFromStorage() {
+    try { const raw = localStorage.getItem(KEY); data = raw ? normalize(JSON.parse(raw), false) : defaults(); } catch (e) { return; }
+    external.forEach(fn => fn());
+  }
+  window.addEventListener('storage', e => { if (e.key === KEY || e.key === null) reloadFromStorage(); });
+
   function init() {
     storageOk = probe();
     if (!storageOk) { data = defaults(); return; }
+    // minta browser agar tidak menghapus data situs ini saat penyimpanan menipis
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}
     try {
       const raw = localStorage.getItem(KEY);
       data = raw ? normalize(JSON.parse(raw), false) : defaults();
@@ -94,6 +104,7 @@ const Store = (() => {
     get loadError() { return loadError; },
     get storageOk() { return storageOk; },
     onChange: fn => listeners.push(fn),
+    onExternal: fn => external.push(fn),
     init,
     addTx: t => { data.transactions.push({ ...t, id: uid() }); commit(); },
     updateTx: (id, t) => { const i = data.transactions.findIndex(x => x.id === id); if (i > -1) { data.transactions[i] = { ...t, id }; commit(); } },
