@@ -75,7 +75,3 @@ Gunakan menu **Pengaturan → Ekspor JSON** secara berkala untuk membuat cadanga
 ## Kontribusi
 
 Saran dan perbaikan sangat diterima. Silakan buka *issue* atau kirim *pull request*.
-
-## 📄 Lisensi
-
-Belum ditentukan. Tambahkan file `LICENSE` (misalnya MIT) sesuai kebutuhanmu.
