@@ -106,10 +106,10 @@ function budgetMode() {
   const has = { p10: B.total > 0, month: B.total > 0 || !!(B.month && B.month.total > 0) };
   return has[pref] || !(has.p10 || has.month) ? pref : (pref === 'p10' ? 'month' : 'p10');
 }
-/* Anggaran rentang khusus yang mencakup hari ini (bila ada, yang paling baru dimulai didahulukan). */
+/* Anggaran rentang khusus yang mencakup hari ini (bila ada lebih dari satu, yang terakhir disimpan didahulukan). */
 function customNow() {
   const c = D().budget.custom || {}, t = today();
-  const hit = Object.keys(c).map(k => k.split('_')).filter(([s, e]) => s <= t && t <= e).sort((x, y) => y[0].localeCompare(x[0]))[0];
+  const hit = Object.keys(c).map(k => k.split('_')).filter(([s, e]) => s <= t && t <= e).sort((x, y) => ((c[y.join('_')].savedAt || 0) - (c[x.join('_')].savedAt || 0)) || y[0].localeCompare(x[0]))[0];
   return hit ? { start: hit[0], end: hit[1], set: c[hit.join('_')] } : null;
 }
 function budgetNow() {
@@ -368,9 +368,9 @@ document.addEventListener('click', e => {
     case 'reset-filter': ['fSearch','fType','fCat','fMethod','fFrom','fTo'].forEach(i => $('#' + i).value = ''); viewTx(); break;
     case 'shift-p': { const f = F[b.closest('[data-f]').dataset.f]; f.start = addDays(DATE_RE.test(f.start) ? f.start : periodOf(today()).start, 10 * Number(b.dataset.dir)); render(); break; }
     case 'del-custom': { const c = { ...(D().budget.custom || {}) }; delete c[rangeKey({ start: b.dataset.from, end: b.dataset.to })];
-      if (confirm('Hapus anggaran rentang khusus ini?')) { Store.setBudget({ ...D().budget, custom: c }); toast('Anggaran rentang khusus dihapus.'); } break; }
+      if (confirm('Hapus anggaran rentang khusus ini?')) { Store.setBudget({ ...D().budget, custom: c }); toast('Anggaran rentang khusus dihapus.'); syncDash(); } break; }
     case 'clean-custom': { const c = { ...(D().budget.custom || {}) }; Object.keys(c).forEach(k => { if (k.split('_')[1] < today()) delete c[k]; });
-      if (confirm('Hapus semua anggaran rentang khusus yang sudah lewat?')) { Store.setBudget({ ...D().budget, custom: c }); toast('Anggaran yang sudah selesai dihapus.'); } break; }
+      if (confirm('Hapus semua anggaran rentang khusus yang sudah lewat?')) { Store.setBudget({ ...D().budget, custom: c }); toast('Anggaran yang sudah selesai dihapus.'); syncDash(); } break; }
     case 'open-custom': Object.assign(F.bud, { mode: 'custom', from: b.dataset.from, to: b.dataset.to }); render(); break;
     case 'cur-p': F[b.closest('[data-f]').dataset.f].start = periodOf(today()).start; render(); break;
     case 'hide-warn': Store.setPref('hideWarn', true); break;
@@ -381,11 +381,12 @@ document.addEventListener('click', e => {
       if (!total) total = Object.values(cats).reduce((x, y) => x + y, 0); // total kosong → jumlah anggaran kategori
       const mode = F.bud.mode, B = D().budget;
       if (mode === 'month') Store.setBudget({ ...B, month: { total, categories: cats } });
-      else if (mode === 'custom') Store.setBudget({ ...B, custom: { ...(B.custom || {}), [rangeKey(getRange(F.bud))]: { total, categories: cats } } });
+      else if (mode === 'custom') Store.setBudget({ ...B, custom: { ...(B.custom || {}), [rangeKey(getRange(F.bud))]: { total, categories: cats, savedAt: Date.now() } } });
       else {
         const anchor = $('#bAnchor').value; if (!DATE_RE.test(anchor)) return toast('Tanggal mulai siklus wajib diisi.', 'danger');
         Store.setBudget({ ...B, total, anchor, categories: cats }); ['dash','rep','bud'].forEach(k => F[k].start = periodOf(today()).start);
       }
+      syncDash();
       Store.storageOk ? toast(`Anggaran ${mode === 'month' ? 'bulanan' : mode === 'custom' ? 'rentang khusus' : 'per 10 hari'} disimpan.`) : toast('Gagal menyimpan: penyimpanan browser diblokir.', 'danger'); break;
     }
     case 'apply-tpl': {
@@ -401,7 +402,7 @@ document.addEventListener('click', e => {
       const B = D().budget;
       if (F.bud.mode === 'month') Store.setBudget({ ...B, month: null });
       else { const c = { ...(B.custom || {}) }; delete c[rangeKey(getRange(F.bud))]; Store.setBudget({ ...B, custom: c }); }
-      toast('Kembali ke perhitungan otomatis.'); break;
+      toast('Kembali ke perhitungan otomatis.'); syncDash(); break;
     }
     case 'new-goal': openGoal(); break;
     case 'edit-goal': openGoal(id); break;
@@ -475,6 +476,12 @@ $('#importFile').addEventListener('change', e => {
 
 /* ===== Mulai ===== */
 Store.init();
+/* Samakan periode Dashboard dengan anggaran yang sedang berlaku (dipanggil setelah anggaran disimpan atau dihapus). */
+function syncDash() {
+  const cn = customNow(); F.dash = mkF(); F.dash.mode = D().prefs.defMode === 'month' ? 'month' : 'p10';
+  if (cn) Object.assign(F.dash, { mode: 'custom', from: cn.start, to: cn.end });
+  render();
+}
 /* Atur ulang filter ke periode saat ini. Bila ada anggaran rentang khusus yang mencakup hari ini, Dashboard dan Anggaran ikut rentang itu. */
 function resetFilters(keepRep) {
   const m = D().prefs.defMode === 'month' ? 'month' : 'p10', cn = customNow();

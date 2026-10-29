@@ -43,7 +43,7 @@ const Store = (() => {
     if (o.budget && typeof o.budget === 'object') {
       if (num(o.budget.total) && o.budget.total >= 0) d.budget.total = o.budget.total;
       if (typeof o.budget.anchor === 'string' && DATE.test(o.budget.anchor)) d.budget.anchor = o.budget.anchor;
-      const set = x => { if (!x || typeof x !== 'object' || !num(x.total) || x.total < 0 || !x.categories || typeof x.categories !== 'object') return null; const c = {}; for (const [k, v] of Object.entries(x.categories)) if (num(v) && v >= 0) c[k] = v; return { total: x.total, categories: c }; };
+      const set = x => { if (!x || typeof x !== 'object' || !num(x.total) || x.total < 0 || !x.categories || typeof x.categories !== 'object') return null; const c = {}; for (const [k, v] of Object.entries(x.categories)) if (num(v) && v >= 0) c[k] = v; return { total: x.total, categories: c, ...(num(x.savedAt) ? { savedAt: x.savedAt } : {}) }; };
       d.budget.month = set(o.budget.month);
       if (o.budget.custom && typeof o.budget.custom === 'object') for (const [k, v] of Object.entries(o.budget.custom)) { const s = set(v); if (/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/.test(k) && s) d.budget.custom[k] = s; }
       if (o.budget.categories && typeof o.budget.categories === 'object') {
